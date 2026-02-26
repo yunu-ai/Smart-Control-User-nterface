@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İHAS Taktik Arayüzü</title>
+    <!-- Tailwind CSS (CDN üzerinden stil için) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- ÖZEL STİLLER --- */
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; /* Sayfa kaydırmasını engelle */
+        }
+
+        /* Hacker/Taktik Scrollbar Tasarımı */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Video alanı üzerinde varsayılan fareyi gizle */
+        #video-container {
+            cursor: none; 
+        }
+
+        /* --- NİŞANGAH (CROSSHAIR) --- */
+        #crosshair {
+            position: absolute;
+            width: 32px;  /* Normal fare imleci boyutu */
+            height: 32px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none; /* Tıklamaları engelleme, arkaya geçir */
+            transition: top 0.05s linear, left 0.05s linear; /* Çok hafif yumuşatma */
+        }
+
+        /* Nişangah Çizgileri (Ortak) */
+        .ch-line {
+            position: absolute;
+            background-color: #0f0; /* Yeşil */
+            transition: all 0.1s;
+        }
+
+        /* Yatay Çizgi */
+        .ch-h {
+            width: 100%; height: 2px;
+            top: 50%; left: 0;
+            transform: translateY(-50%);
+        }
+
+        /* Dikey Çizgi */
+        .ch-v {
+            width: 2px; height: 100%;
+            left: 50%; top: 0;
+            transform: translateX(-50%);
+        }
+
+        /* --- LAZER AKTİF MODU (Neon Pembe & Kalın) --- */
+        #crosshair.lazer-acik .ch-line {
+            background-color: #ff00cc;
+            box-shadow: 0 0 5px #ff00cc, 0 0 10px #ff00cc;
+        }
+        #crosshair.lazer-acik .ch-h { height: 4px; }
+        #crosshair.lazer-acik .ch-v { width: 4px; }
+
+        /* Buton Aktif Efekti (Kırmızı Parlama) */
+        .fire-active {
+            background-color: #ff0000 !important;
+            box-shadow: 0 0 15px red;
+            transform: scale(0.95);
+            color: white !important;
+        }
+        
+        /* Lazer Butonu Aktif (Mavi Parlama) */
+        .laser-btn-active {
+            background-color: #00ccff !important;
+            color: black !important;
+            box-shadow: 0 0 10px #00ccff;
+        }
+
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
+  }
+}
+</script>
+</head>
+<body class="h-screen w-screen p-5 box-border flex flex-col gap-4">
+
+    <!-- ÜST BÖLÜM: KAMERA VE KONTROLLER -->
+    <div id="top-section" class="flex gap-4 flex-1 items-stretch min-h-0">
+        
+        <!-- SOL: VİDEO PANELİ -->
+        <div id="left-video-panel" class="flex-1 border-2 border-[#444] bg-black rounded-lg p-2 flex justify-center items-center relative overflow-hidden">
+            <div id="video-container" class="border-2 border-[#0f0] w-full h-full relative flex items-center justify-center overflow-hidden">
+                
+                <!-- Video Kaynağı (Webcam) -->
+                <video id="webcam-feed" autoplay playsinline muted class="w-full h-full object-cover absolute top-0 left-0 z-0"></video>
+
+                <!-- Nişangah -->
+                <div id="crosshair">
+                    <div class="ch-line ch-h"></div>
+                    <div class="ch-line ch-v"></div>
+                </div>
+
+                <!-- Overlay Yazı -->
+                <div class="absolute bottom-5 left-1/2 -translate-x-1/2 text-[#0f0] font-mono font-bold z-20 text-sm tracking-wider pointer-events-none">
+                    [ HEDEF TESPİTİ ● ]
+                </div>
+            </div>
+        </div>
+
+        <!-- SAĞ: KONTROL PANELİ -->
+        <div id="right-control-panel" class="w-[320px] flex-shrink-0 border-2 border-[#444] bg-[#222] p-4 rounded-lg flex flex-col justify-between overflow-hidden">
+            
+            <!-- Durum Bilgileri -->
+            <div>
+                <h4 class="border-b border-[#555] pb-1 mb-2 text-[#aaa] text-sm">DURUM PANELİ</h4>
+                <div class="space-y-1 font-mono text-[13px]">
+                    <p>GÜÇ: <span class="text-[#00ff00] font-bold">%100</span></p>
+                    <p>MÜHİMMAT: <span class="text-[#00ccff] font-bold">5 ADET</span></p>
+                    <p>SENSÖR: <span class="text-[#ff0000] font-bold">PASİF</span></p>
+                </div>
+
+                <!-- Mod Butonları -->
+                <h4 class="mt-4 border-b border-[#555] pb-1 mb-2 text-[#aaa] text-sm">MODLAR</h4>
+                <div class="flex gap-2 flex-wrap">
+                    <button id="btn-toggle-laser" onclick="toggleManuelLazer()" class="bg-[#444] text-white border border-[#666] rounded px-3 py-2 text-sm hover:bg-[#555] transition-all flex items-center gap-2">
+                        <span>⊕</span> LAZER
+                    </button>
+                    <button class="bg-[#444] text-white border border-[#666] rounded px-3 py-2 text-sm hover:bg-[#555]">GECE GÖRÜŞ</button>
+                </div>
+            </div>
+
+            <!-- Namlu Kontrolü (D-Pad Görseli) -->
+            <div class="flex flex-col items-center gap-1 my-4">
+                <h4 class="w-full text-center text-[#aaa] text-xs mb-2">NAMLU KONTROLÜ</h4>
+                <button class="w-10 h-10 bg-[#444] border border-[#666] rounded flex items-center justify-center text-white hover:bg-[#555]" onclick="klavyeHareket('ArrowUp')">▲</button>
+                <div class="flex gap-1">
+                    <button class="w-10 h-10 bg-[#444] border border-[#666] rounded flex items-center justify-center text-white hover:bg-[#555]" onclick="klavyeHareket('ArrowLeft')">◀</button>
+                    <div class="w-10 h-10 bg-[#555] border border-[#666] rounded flex items-center justify-center"><div class="w-2 h-2 rounded-full bg-white"></div></div>
+                    <button class="w-10 h-10 bg-[#444] border border-[#666] rounded flex items-center justify-center text-white hover:bg-[#555]" onclick="klavyeHareket('ArrowRight')">▶</button>
+                </div>
+                <button class="w-10 h-10 bg-[#444] border border-[#666] rounded flex items-center justify-center text-white hover:bg-[#555]" onclick="klavyeHareket('ArrowDown')">▼</button>
+            </div>
+
+            <!-- Ateş Butonu -->
+            <button 
+                id="btn-fire"
+                class="w-full p-3 font-bold text-lg mt-auto rounded transition-all duration-100 uppercase tracking-widest bg-[#d32f2f] hover:bg-[#b71c1c] text-white select-none"
+                onmousedown="atesBaslat('mouse')" 
+                onmouseup="atesBitir('mouse')" 
+                onmouseleave="atesBitir('mouse')"
+                ontouchstart="atesBaslat('mouse')"
+                ontouchend="atesBitir('mouse')"
+            >
+                ATEŞLE (SPACE)
+            </button>
+        </div>
+    </div>
+
+    <!-- ALT BÖLÜM: KONSOL -->
+    <div id="bottom-console" class="h-[250px] shrink-0 w-[72%] relative border-2 border-[#d32f2f] bg-[#111] rounded-lg p-2 font-mono text-[#0f0] text-[13px] flex flex-col">
+        <button onclick="loglariTemizle()" class="absolute top-2 right-4 bg-[#333] text-[#aaa] border border-[#555] px-2 py-1 text-[11px] z-10 hover:bg-[#555] hover:text-white rounded cursor-pointer transition-colors">
+            TEMİZLE
+        </button>
+
+        <div id="log-scroll-area" class="flex-1 overflow-y-auto flex flex-col-reverse items-start pt-8">
+            <div class="w-full py-2 text-gray-500 italic text-xs border-b border-[#222]">
+                > SİSTEM HAZIR. HEDEF TARANIYOR...
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT KODLARI -->
+    <script>
+        // --- DEĞİŞKENLER ---
+        const videoElement = document.getElementById('webcam-feed');
+        const crosshair = document.getElementById('crosshair');
+        const videoContainer = document.getElementById('video-container');
+        const btnFire = document.getElementById('btn-fire');
+        const btnToggleLaser = document.getElementById('btn-toggle-laser');
+        const logArea = document.getElementById('log-scroll-area');
+
+        // Durumlar
+        let crosshairPos = { x: 50, y: 50 }; // %50 ortada başla
+        let manualLaserOn = false;
+        let isFiring = false;
+        let firingInterval = null;
+        
+        // Tetikleyiciler (Hangi tuş/mouse basılı?)
+        let triggers = { space: false, mouse: false };
+
+        // --- BAŞLANGIÇ AYARLARI ---
+
+        // 1. Kamerayı Başlat
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoElement.srcObject = stream;
+            } catch (err) {
+                logEkle("KAMERA ERİŞİM HATASI: " + err, 'alert');
+            }
+        }
+        startCamera();
+
+        // 2. Nişangahı Ortala (Sayfa yüklendiğinde)
+        function centerCrosshair() {
+            const rect = videoContainer.getBoundingClientRect();
+            crosshairPos.x = rect.width / 2;
+            crosshairPos.y = rect.height / 2;
+            updateCrosshairVisual();
+        }
+        window.addEventListener('load', centerCrosshair);
+        window.addEventListener('resize', centerCrosshair);
+
+        // --- NİŞANGAH HAREKETİ ---
+
+        // Mouse Hareketi
+        videoContainer.addEventListener('mousemove', (e) => {
+            const rect = videoContainer.getBoundingClientRect();
+            // Mouse'un container içindeki konumu
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+
+            // Sınırlar içinde tut
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
+
+            crosshairPos = { x, y };
+            updateCrosshairVisual();
+        });
+
+        // Klavye Yön Tuşları
+        function klavyeHareket(key) {
+            const step = 15; 
+            const rect = videoContainer.getBoundingClientRect();
+
+            if(key === 'ArrowUp') crosshairPos.y -= step;
+            if(key === 'ArrowDown') crosshairPos.y += step;
+            if(key === 'ArrowLeft') crosshairPos.x -= step;
+            if(key === 'ArrowRight') crosshairPos.x += step;
+
+            crosshairPos.x = Math.max(0, Math.min(crosshairPos.x, rect.width));
+            crosshairPos.y = Math.max(0, Math.min(crosshairPos.y, rect.height));
+
+            updateCrosshairVisual();
+        }
+
+        function updateCrosshairVisual() {
+            crosshair.style.left = crosshairPos.x + 'px';
+            crosshair.style.top = crosshairPos.y + 'px';
+        }
+
+        // --- LAZER VE ATEŞLEME SİSTEMİ ---
+
+        // Görsel Güncelleme: Hem crosshair'i hem de butonu günceller
+        function updateVisuals() {
+            // Lazer fiziksel olarak açık mı? (Manuel açıldıysa VEYA Ateş ediliyorsa)
+            const isLaserActive = manualLaserOn || isFiring;
+
+            if (isLaserActive) {
+                // Crosshair Pembe & Kalın
+                crosshair.classList.add('lazer-acik');
+                // Buton Mavi & "AÇIK"
+                btnToggleLaser.classList.add('laser-btn-active');
+                btnToggleLaser.innerHTML = "<span>⊕</span> LAZER AÇIK";
+            } else {
+                // Crosshair Yeşil & İnce
+                crosshair.classList.remove('lazer-acik');
+                // Buton Gri & "LAZER"
+                btnToggleLaser.classList.remove('laser-btn-active');
+                btnToggleLaser.innerHTML = "<span>⊕</span> LAZER";
+            }
+        }
+
+        function updateFiringState() {
+            // Herhangi biri basılıysa ateşle
+            const shouldFire = triggers.space || triggers.mouse;
+
+            if (shouldFire && !isFiring) {
+                // Ateşlemeye YENİ başlandı
+                isFiring = true;
+                btnFire.classList.add('fire-active');
+                btnFire.innerText = "ATEŞLENİYOR...";
+                
+                logEkle("⚠️ YÜKSEK GÜÇLÜ LAZER AKTİF! HEDEF ISITILIYOR...", 'alert');
+
+                firingInterval = setInterval(() => {
+                    logEkle("ATEŞLENİYOR...", 'alert');
+                }, 150);
+
+            } else if (!shouldFire && isFiring) {
+                // Ateşleme DURDU
+                isFiring = false;
+                btnFire.classList.remove('fire-active');
+                btnFire.innerText = "ATEŞLE (SPACE)";
+                
+                clearInterval(firingInterval);
+                logEkle("LAZER KAPATILDI. SOĞUTMA BAŞLADI.");
+            }
+            
+            // Ateşleme durumu değiştiği için görselleri güncelle (Lazer butonu dahil)
+            updateVisuals();
+        }
+
+        // Klavye Dinleyicisi (Space)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                if (!e.repeat) {
+                    triggers.space = true;
+                    updateFiringState();
+                }
+            }
+            if (e.key.startsWith('Arrow')) {
+                e.preventDefault();
+                klavyeHareket(e.key);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                triggers.space = false;
+                updateFiringState();
+            }
+        });
+
+        // Mouse Dinleyicileri
+        function atesBaslat(source) {
+            triggers.mouse = true;
+            updateFiringState();
+        }
+
+        function atesBitir(source) {
+            triggers.mouse = false;
+            updateFiringState();
+        }
+
+        // Video container'a tıklama
+        videoContainer.addEventListener('mousedown', () => atesBaslat('video'));
+        videoContainer.addEventListener('mouseup', () => atesBitir('video'));
+        videoContainer.addEventListener('mouseleave', () => atesBitir('video'));
+
+        // --- DİĞER FONKSİYONLAR ---
+
+        // Manuel Lazer Butonu Tıklanınca
+        function toggleManuelLazer() {
+            manualLaserOn = !manualLaserOn;
+            updateVisuals(); // Buton ve crosshair'i güncelle
+            
+            if (manualLaserOn) {
+                logEkle("LAZER MODU: AKTİF", 'success');
+            } else {
+                // Eğer ateş etmiyorsak pasif oldu demektir
+                if(!isFiring) logEkle("LAZER MODU: PASİF");
+            }
+        }
+
+        // Log Ekleme
+        function logEkle(mesaj, tip = 'info') {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            const div = document.createElement('div');
+            div.className = "w-full border-b border-[#222] py-1 hover:bg-[#222] transition-colors";
+            
+            let colorClass = "text-[#0f0]";
+            if (tip === 'alert') colorClass = "text-red-500 font-bold";
+            if (tip === 'success') colorClass = "text-blue-400 font-bold";
+
+            div.innerHTML = `<span class="opacity-50 text-xs mr-2">[${timeString}]</span><span class="${colorClass}">> ${mesaj}</span>`;
+            logArea.insertBefore(div, logArea.firstChild);
+        }
+
+        function loglariTemizle() {
+            logArea.innerHTML = '<div class="w-full py-2 text-gray-500 italic text-xs border-b border-[#222]">> SİSTEM HAZIR. HEDEF TARANIYOR...</div>';
+        }
+
+    </script>
+</body>
+</html> 
