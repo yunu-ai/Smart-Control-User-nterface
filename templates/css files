@@ -1,0 +1,209 @@
+
+        /* --- GENEL SAYFA AYARLARI --- */
+        body { 
+            background-color: #1a1a1a; 
+            color: white; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px; 
+            height: 100vh; 
+            box-sizing: border-box; 
+        }
+
+        #main-interface {
+            display: flex;
+            flex-direction: column; 
+            gap: 15px; 
+            width: 100%; 
+            height: 100%; 
+        }
+
+        /* --- ÜST BÖLÜM --- */
+        #top-section {
+            display: flex; 
+            gap: 15px;
+            flex: 1; 
+            align-items: stretch; 
+            min-height: 0; 
+        }
+
+        /* KAMERA ALANI */
+        #left-video-panel {
+            flex: 1; 
+            border: 2px solid #444;
+            background: #000;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Videoyu kutuya yayar, siyah boşluk bırakmaz */
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1; /* En altta durur */
+        }
+        #video-container { 
+            border: 2px solid #0f0; 
+            width: 100%;   
+            height: 100%;  
+            position: relative; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- SAĞ KONTROL PANELİ --- */
+        #right-control-panel {
+            width: 320px; 
+            flex-shrink: 0; 
+            border: 2px solid #444;
+            background: #222;
+            padding: 15px; 
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            overflow: hidden; 
+        }
+
+        /* YAZI VE BUTON AYARLARI */
+        h4 { margin: 0; border-bottom: 1px solid #555; padding-bottom: 5px; color: #aaa; margin-bottom: 8px; font-size: 14px; }
+        #right-control-panel p { margin: 5px 0; font-size: 13px; }
+
+        .status-green { color: #00ff00; font-weight: bold; }
+        .status-red { color: #ff0000; font-weight: bold; }
+        .status-blue { color: #00ccff; font-weight: bold; }
+
+        .pad-controls button { padding: 8px; font-size: 14px; width: 40px; height: 40px; }
+        
+        button { 
+            cursor: pointer; background: #444; color: white; border: 1px solid #666; 
+            border-radius: 5px; margin: 2px; transition: all 0.1s;
+        }
+        button:hover { background: #555; }
+        
+        .btn-active { background-color: #00ccff !important; color: black !important; transform: scale(0.95); box-shadow: 0 0 10px #00ccff; }
+
+        .fire-btn {
+            background-color: #d32f2f; width: 100%; padding: 12px; 
+            font-weight: bold; font-size: 16px; margin-top: auto;
+        }
+        .fire-btn:hover { background-color: #b71c1c; }
+        .fire-active { background-color: #ff0000 !important; box-shadow: 0 0 15px red; }
+
+        .pad-controls { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .pad-mid { display: flex; gap: 3px; }
+        
+        /* --- ALT KONSOL AYARLARI (GÜNCELLENDİ) --- */
+        #bottom-console {
+            height: 250px; 
+            flex-shrink: 0; 
+            
+            /* GÜNCELLEME 1: Genişliği %72 yaptık (Daha dar olsun diye) */
+            width: 72%; 
+
+            /* GÜNCELLEME 2: 'relative' verdik ki Temizle butonu içine yerleşsin */
+            position: relative; 
+
+            border: 2px solid #d32f2f; 
+            background-color: #111;
+            border-radius: 10px;
+            padding: 10px;
+            
+            /* Scroll içerik için ayarlandı */
+            font-family: monospace;
+            color: #0f0;
+            font-size: 13px;
+            
+            /* Flex ile içeriği yönetelim */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Logların aktığı alan (Scroll buraya gelecek) */
+        #log-scroll-area {
+            flex: 1; /* Tüm alanı kapla */
+            overflow-y: auto; /* Yazı taşarsa sadece burası kaydırılsın */
+            display: flex;
+            flex-direction: column-reverse; /* Yeni mesaj en altta değil, akış ters */
+            align-items: flex-start;
+            padding-top: 30px; /* Butonun altında kalmaması için boşluk */
+        }
+        
+        .log-entry { margin: 2px 0; border-bottom: 1px solid #222; width: 100%; }
+
+        /* --- YENİ TEMİZLE BUTONU --- */
+        #clear-logs-btn {
+            position: absolute; /* Kutunun içinde serbest dolaşım */
+            top: 10px;
+            right: 15px; /* Sağ üst köşe */
+            background-color: #333;
+            color: #aaa;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            font-size: 11px;
+            z-index: 10; /* Yazıların üstünde dursun */
+        }
+        #clear-logs-btn:hover { background-color: #555; color: white; }
+
+/* --- HAREKETLİ NİŞANGAH AYARLARI --- */
+#crosshair {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+    transition: top 0.1s, left 0.1s; 
+}
+
+/* Çizgilerin Normal Hali (YEŞİL) */
+#crosshair::before, 
+#crosshair::after {
+    content: '';
+    position: absolute;
+    background-color: #0f0; /* Yeşil */
+    transition: all 0.1s;
+}
+
+/* Yatay Çizgi (Normal) */
+#crosshair::before {
+    top: 50%; left: 0; width: 100%; height: 2px;
+    transform: translateY(-50%);
+}
+
+/* Dikey Çizgi (Normal) */
+#crosshair::after {
+    left: 50%; top: 0; height: 100%; width: 2px;
+    transform: translateX(-50%);
+}
+
+/* --- LAZER AÇIK MODU (NEON PEMBE) --- */
+
+/* 1. Ortak Ayarlar: Renk ve Parlama */
+#crosshair.lazer-acik::before,
+#crosshair.lazer-acik::after {
+    background-color: #ff00cc; /* Canlı Neon Pembe */
+    
+    /* Neon Efekti: İki katmanlı gölge ile ışık saçmasını sağlıyoruz */
+    box-shadow: 0 0 10px #ff00cc, 0 0 20px #ff00cc; 
+}
+
+/* 2. Yatay Çizgiyi Kalınlaştır */
+#crosshair.lazer-acik::before {
+    height: 6px; /* Biraz kalınlaşsın */
+    width: 100%; /* Boyu aynı kalsın (Kısalmasın) */
+}
+
+/* 3. Dikey Çizgiyi Kalınlaştır */
+#crosshair.lazer-acik::after {
+    width: 6px; /* Biraz kalınlaşsın */
+    height: 100%; /* Boyu aynı kalsın (Kısalmasın) */
+}
